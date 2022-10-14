@@ -11,12 +11,17 @@ import {
 
 import { Socket, Server } from 'socket.io';
 
+interface AuthorClients {
+  socket: Socket;
+  author_id: number;
+}
 @WebSocketGateway(3100)
 export class BasicGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   private _clientes: Socket[] = [];
   private _server: Server;
+  private _authorClients: AuthorClients[] = [];
 
   get getClientes(): Socket[] {
     return [...this._clientes];
@@ -29,16 +34,27 @@ export class BasicGateway
     console.log('server iniciado');
   }
   handleConnection(client: Socket, ...args: any[]) {
-    const {} = client;
     console.log('cliente conectado... --> ', client.id);
-    //console.log('args --> ', args);
+    console.log('headers --> ', client.handshake.headers);
+    console.log('params --> ', client.handshake.query);
   }
 
   @SubscribeMessage('clients_push')
   get_on_list(@ConnectedSocket() client: Socket): string {
     console.log(`cliente {${client.id}} uniendose... `);
     this._clientes.push(client);
-    return 'cliente unido !!! ';
+
+    const { handshake } = client;
+    const { headers } = handshake;
+
+    if (headers?.author_id && +headers?.author_id) {
+      this._authorClients.push({
+        socket: client,
+        author_id: +headers.author_id,
+      });
+      console.log('autor valido, ingresado...');
+    } else console.log('cliente no es autor, no entra !!!');
+    return 'listoco';
   }
 
   @SubscribeMessage('clients_list')
